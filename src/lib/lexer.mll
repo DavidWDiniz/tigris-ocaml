@@ -30,27 +30,78 @@
 let spaces = [' ' '\t'] +
 let digit = ['0'-'9']
 let litint = digit +
+let char = ['a'-'z' 'A'-'Z']
+let id = char + (char | '_' | digit)*
+let real = ((digit*('.')digit+ | digit+('.')digit*)(('e'|'E')('-')?(digit+))?) 
+           | (digit+ ['e' 'E'] ('-')? digit+)
+let bool = ("true"|"false")
 
 rule token = parse
-  | spaces        { token lexbuf }
-  | '\n'          { L.new_line lexbuf;
-                    token lexbuf }
-  | litint as lxm { INTEGER (int_of_string lxm) }
-  | '"'           { string lexbuf.L.lex_start_p lexbuf }
-  (* add the remaining tokens *)
-  | eof           { EOF }
-  | _             { illegal_character (Location.curr_loc lexbuf) (L.lexeme_char lexbuf 0) }
+  | spaces               { token lexbuf }
+  | '\n'                 { L.new_line lexbuf;
+                           token lexbuf }
+  | litint as lxm        { INTEGER (int_of_string lxm) }
+  | real as lxm          { REAL (float_of_string lxm) }
+  | bool as lxm          { LOGIC (bool_of_string lxm) }
+  | '"'                  { string lexbuf.L.lex_start_p lexbuf }
+  | "if"                 { IF }
+  | "then"               { THEN }
+  | "else"               { ELSE }
+  | "while"              { WHILE }
+  | "do"                 { DO }
+  | "break"              { BREAK }
+  | "let"                { LET }
+  | "in"                 { IN }
+  | "end"                { END }
+  | "var"                { VAR }
+  | id as lxm            { ID (Symbol.symbol lxm) }
+  | '('                  { LPAREN }
+  | ')'                  { RPAREN }
+  | ':'                  { COLON }
+  | ','                  { COMMA }
+  | ';'                  { SEMI }
+  | '+'                  { PLUS }
+  | '-'                  { MINUS }
+  | '*'                  { TIMES }
+  | '/'                  { DIV }
+  | '%'                  { MOD }
+  | '^'                  { POW }
+  | '='                  { EQ }
+  | "<>"                 { NE }
+  | '<'                  { LT }
+  | "<="                 { LE }
+  | '>'                  { GT }
+  | ">="                 { GE }
+  | '&'                  { AND }
+  | '|'                  { OR }
+  | ":="                 { ASSIGN }
+  | eof                  { EOF }
+  | _                    { illegal_character (Location.curr_loc lexbuf) (L.lexeme_char lexbuf 0) }
 
 and string pos = parse
-| '"'                  { lexbuf.L.lex_start_p <- pos;
-                         let text = Buffer.contents string_buffer in
-                         Buffer.clear string_buffer;
-                         STRING text }
-| "\\t"                { Buffer.add_char string_buffer '\t';
-                         string pos lexbuf }
-(* add the other escape sequences *)
-(* report error on invalid escape sequence *)
-| [^ '\\' '"']+ as lxm { str_incr_linenum lxm lexbuf;
-                         Buffer.add_string string_buffer lxm;
-                         string pos lexbuf }
-(* report error on eof *)
+| '"'                                                  { lexbuf.L.lex_start_p <- pos;
+                                                         let text = Buffer.contents string_buffer in
+                                                         Buffer.clear string_buffer;
+                                                         STRING text }
+| "\\t"                                                { Buffer.add_char string_buffer '\t';
+                                                         string pos lexbuf }
+| "\\n"                                                { Buffer.add_char string_buffer '\n';
+                                                         string pos lexbuf }               
+| "\\r"                                                { Buffer.add_char string_buffer '\r';
+                                                         string pos lexbuf }
+| "\\b"                                                { Buffer.add_char string_buffer '\b';
+                                                         string pos lexbuf }
+| "\\v"                                                { Buffer.add_char string_buffer (Char.chr 11);
+                                                         string pos lexbuf }
+| "\\f"                                                { Buffer.add_char string_buffer (Char.chr 12);
+                                                         string pos lexbuf }
+| "\\^" (['A'-'Z' '@' '[' '\\' ']' '^' '_' '?'] as x)  { Buffer.add_char string_buffer x;
+                                                         string pos lexbuf }
+| "\\" (digit digit digit as x)                        { Buffer.add_string string_buffer x; 
+                                                         string pos lexbuf }
+| [^ '\\' '"']+ as lxm                                 { str_incr_linenum lxm lexbuf;
+                                                         Buffer.add_string string_buffer lxm;
+                                                         string pos lexbuf }
+| eof                                                  { unterminated_string (pos, lexbuf.L.lex_start_p); }
+
+
