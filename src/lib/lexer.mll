@@ -33,7 +33,7 @@ let litint = digit +
 let char = ['a'-'z' 'A'-'Z']
 let id = char + (char | '_' | digit)*
 let real = ((digit*('.')digit+ | digit+('.')digit*)(('e'|'E')('-')?(digit+))?) 
-           | (digit+ ['e' 'E'] ('-')? digit+)
+           | (digit+ ('e'|'E') ('-')? digit+)
 let bool = ("true"|"false")
 
 rule token = parse
