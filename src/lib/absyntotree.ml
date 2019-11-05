@@ -21,6 +21,8 @@ let string_of_oper = function
   | GeOp    -> ">="
   | AndOp   -> "&"
   | OrOp    -> "|"
+  | ModOp   -> "%"
+  | PowOp   -> "^"
 
 let escape_dot s =
   Util.implode
